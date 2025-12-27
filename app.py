@@ -1,36 +1,47 @@
+%%writefile app.py
 
 import streamlit as st
 import pandas as pd
 import joblib
 
-# Load model package
-data = joblib.load("HR_Attrition_ML.pkl")
-model = data["model"]
-columns = data["columns"]
-encoders = data["encoders"]
+# Load full pipeline (preprocessing + model)
+model = joblib.load("HR_Attrition_ML.pkl")
 
 st.title("HR Attrition Prediction")
-st.write("Fill employee details to predict attrition")
+st.write("Enter employee details to predict attrition")
 
-user_input = {}
+# -------- INPUTS -------- #
+age = st.number_input("Age", 18, 65, 30)
+monthly_income = st.number_input("Monthly Income", 1000, 200000, 30000)
+distance_from_home = st.number_input("Distance From Home (KM)", 0, 100, 10)
+years_at_company = st.number_input("Years At Company", 0, 40, 5)
 
-# Dynamically create inputs based on training columns
-for col in columns:
-    if col in encoders:
-        options = list(encoders[col].classes_)
-        user_input[col] = st.selectbox(col, options)
-    else:
-        user_input[col] = st.number_input(col, value=0)
+job_satisfaction = st.selectbox("Job Satisfaction (1=Low, 4=High)", [1,2,3,4])
+work_life_balance = st.selectbox("Work Life Balance (1=Bad, 4=Excellent)", [1,2,3,4])
 
+overtime = st.selectbox("OverTime", ["Yes", "No"])
+gender = st.selectbox("Gender", ["Male", "Female"])
+department = st.selectbox("Department", ["Sales", "HR", "R&D"])
+job_role = st.selectbox("Job Role", ["Manager", "Developer", "Analyst"])
+
+# -------- CREATE DATAFRAME (RAW FEATURES) -------- #
+input_data = pd.DataFrame([{
+    "Age": age,
+    "MonthlyIncome": monthly_income,
+    "DistanceFromHome": distance_from_home,
+    "YearsAtCompany": years_at_company,
+    "JobSatisfaction": job_satisfaction,
+    "WorkLifeBalance": work_life_balance,
+    "OverTime": overtime,
+    "Gender": gender,
+    "Department": department,
+    "JobRole": job_role
+}])
+
+# -------- PREDICTION -------- #
 if st.button("Predict Attrition"):
-    input_df = pd.DataFrame([user_input])
-
-    # Encode categorical values
-    for col, encoder in encoders.items():
-        input_df[col] = encoder.transform(input_df[col])
-
-    prediction = model.predict(input_df)[0]
-    probability = model.predict_proba(input_df)[0][1]
+    prediction = model.predict(input_data)[0]
+    probability = model.predict_proba(input_data)[0][1]
 
     if prediction == 1:
         st.error(f"⚠ Employee likely to leave (Risk: {probability*100:.2f}%)")
