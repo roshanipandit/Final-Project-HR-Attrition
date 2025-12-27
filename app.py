@@ -30,18 +30,30 @@ if uploaded_file is not None:
     df["JobRole"] = df["JobRole"].map(jobrole_map)
 
     # Feature selection (order matters!)
-    features = [
-        "Age",
-        "MonthlyIncome",
-        "DistanceFromHome",
-        "YearsAtCompany",
-        "JobSatisfaction",
-        "WorkLifeBalance",
-        "OverTime",
-        "Gender",
-        "Department",
-        "JobRole"
-    ]
+   features = [
+    "Age",
+    "MonthlyIncome",
+    "DistanceFromHome",
+    "YearsAtCompany",
+    "JobSatisfaction",
+    "WorkLifeBalance",
+    "OverTime",
+    "Gender",
+    "Department",
+    "JobRole",
+
+    "DailyRate",
+    "HourlyRate",
+    "MonthlyRate",
+    "PercentSalaryHike",
+    "TotalWorkingYears",
+    "YearsInCurrentRole",
+    "YearsSinceLastPromotion",
+    "YearsWithCurrManager",
+    "TrainingTimesLastYear",
+    "NumCompaniesWorked"
+]
+
 
     X = df[features].values
 
