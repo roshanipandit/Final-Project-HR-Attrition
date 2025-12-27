@@ -1,50 +1,36 @@
 
 import streamlit as st
-import numpy as np
+import pandas as pd
 import joblib
 
-model = joblib.load("HR_Attrition_ML.pkl")
+# Load model package
+data = joblib.load("HR_Attrition_ML.pkl")
+model = data["model"]
+columns = data["columns"]
+encoders = data["encoders"]
 
 st.title("HR Attrition Prediction")
-st.write("Enter employee details to predict attrition")
+st.write("Fill employee details to predict attrition")
 
-age = st.number_input("Age", min_value=18, max_value=65, value=30)
-monthly_income = st.number_input("Monthly Income", min_value=1000, max_value=200000, value=30000)
-distance_from_home = st.number_input("Distance From Home (KM)", min_value=0, max_value=100, value=10)
-years_at_company = st.number_input("Years At Company", min_value=0, max_value=40, value=5)
+user_input = {}
 
-job_satisfaction = st.selectbox("Job Satisfaction (1=Low, 4=High)", [1, 2, 3, 4])
-work_life_balance = st.selectbox("Work Life Balance (1=Bad, 4=Excellent)", [1, 2, 3, 4])
-
-overtime = st.selectbox("OverTime", ["Yes", "No"])
-gender = st.selectbox("Gender", ["Male", "Female"])
-department = st.selectbox("Department", ["Sales", "HR", "R&D"])
-job_role = st.selectbox("Job Role", ["Manager", "Developer", "Analyst"])
-
-overtime = 1 if overtime == "Yes" else 0
-gender = 1 if gender == "Male" else 0
-
-department_map = {"Sales": 0, "HR": 1, "R&D": 2}
-jobrole_map = {"Manager": 0, "Developer": 1, "Analyst": 2}
-
-department = department_map[department]
-job_role = jobrole_map[job_role]
+# Dynamically create inputs based on training columns
+for col in columns:
+    if col in encoders:
+        options = list(encoders[col].classes_)
+        user_input[col] = st.selectbox(col, options)
+    else:
+        user_input[col] = st.number_input(col, value=0)
 
 if st.button("Predict Attrition"):
+    input_df = pd.DataFrame([user_input])
 
-    X = np.array([[age,
-                   monthly_income,
-                   distance_from_home,
-                   years_at_company,
-                   job_satisfaction,
-                   work_life_balance,
-                   overtime,
-                   gender,
-                   department,
-                   job_role]])
+    # Encode categorical values
+    for col, encoder in encoders.items():
+        input_df[col] = encoder.transform(input_df[col])
 
-    prediction = model.predict(X)[0]
-    probability = model.predict_proba(X)[0][1]
+    prediction = model.predict(input_df)[0]
+    probability = model.predict_proba(input_df)[0][1]
 
     if prediction == 1:
         st.error(f"⚠ Employee likely to leave (Risk: {probability*100:.2f}%)")
