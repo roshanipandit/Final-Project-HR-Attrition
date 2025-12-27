@@ -1,49 +1,60 @@
 %%writefile app.py
-
 import streamlit as st
 import pandas as pd
+import numpy as np
 import joblib
 
-# Load full pipeline (preprocessing + model)
+# Load trained model
 model = joblib.load("HR_Attrition_ML.pkl")
 
-st.title("HR Attrition Prediction")
-st.write("Enter employee details to predict attrition")
+st.title("HR Attrition Prediction (Excel Upload)")
+st.write("Upload an Excel file to predict employee attrition")
 
-# -------- INPUTS -------- #
-age = st.number_input("Age", 18, 65, 30)
-monthly_income = st.number_input("Monthly Income", 1000, 200000, 30000)
-distance_from_home = st.number_input("Distance From Home (KM)", 0, 100, 10)
-years_at_company = st.number_input("Years At Company", 0, 40, 5)
+# Upload Excel file
+uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
 
-job_satisfaction = st.selectbox("Job Satisfaction (1=Low, 4=High)", [1,2,3,4])
-work_life_balance = st.selectbox("Work Life Balance (1=Bad, 4=Excellent)", [1,2,3,4])
+if uploaded_file is not None:
+    df = pd.read_excel(uploaded_file)
 
-overtime = st.selectbox("OverTime", ["Yes", "No"])
-gender = st.selectbox("Gender", ["Male", "Female"])
-department = st.selectbox("Department", ["Sales", "HR", "R&D"])
-job_role = st.selectbox("Job Role", ["Manager", "Developer", "Analyst"])
+    st.subheader("Uploaded Data Preview")
+    st.dataframe(df.head())
 
-# -------- CREATE DATAFRAME (RAW FEATURES) -------- #
-input_data = pd.DataFrame([{
-    "Age": age,
-    "MonthlyIncome": monthly_income,
-    "DistanceFromHome": distance_from_home,
-    "YearsAtCompany": years_at_company,
-    "JobSatisfaction": job_satisfaction,
-    "WorkLifeBalance": work_life_balance,
-    "OverTime": overtime,
-    "Gender": gender,
-    "Department": department,
-    "JobRole": job_role
-}])
+    # Encoding mappings
+    department_map = {"Sales": 0, "HR": 1, "R&D": 2}
+    jobrole_map = {"Manager": 0, "Developer": 1, "Analyst": 2}
 
-# -------- PREDICTION -------- #
-if st.button("Predict Attrition"):
-    prediction = model.predict(input_data)[0]
-    probability = model.predict_proba(input_data)[0][1]
+    # Preprocessing
+    df["OverTime"] = df["OverTime"].map({"Yes": 1, "No": 0})
+    df["Gender"] = df["Gender"].map({"Male": 1, "Female": 0})
+    df["Department"] = df["Department"].map(department_map)
+    df["JobRole"] = df["JobRole"].map(jobrole_map)
 
-    if prediction == 1:
-        st.error(f"⚠ Employee likely to leave (Risk: {probability*100:.2f}%)")
-    else:
-        st.success(f"✅ Employee likely to stay (Risk: {probability*100:.2f}%)")
+    # Feature selection (order matters!)
+    features = [
+        "Age",
+        "MonthlyIncome",
+        "DistanceFromHome",
+        "YearsAtCompany",
+        "JobSatisfaction",
+        "WorkLifeBalance",
+        "OverTime",
+        "Gender",
+        "Department",
+        "JobRole"
+    ]
+
+    X = df[features].values
+
+    if st.button("Predict Attrition"):
+        predictions = model.predict(X)
+        probabilities = model.predict_proba(X)[:, 1]
+
+        df["Attrition_Prediction"] = predictions
+        df["Attrition_Risk_%"] = (probabilities * 100).round(2)
+
+        df["Attrition_Prediction"] = df["Attrition_Prediction"].map(
+            {1: "Likely to Leave", 0: "Likely to Stay"}
+        )
+
+        st.subheader("Prediction Results")
+        st.dataframe(df)
